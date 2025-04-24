@@ -1,0 +1,12 @@
+---
+title: "My Projects"
+listing:
+    contents: blog
+    type: grid
+    sort: "date desc"
+    categories: false
+---
+
+Welcome to my blog! 📚  
+Here you'll find assignments, projects, and reflections on data science, experiments, and more.
+

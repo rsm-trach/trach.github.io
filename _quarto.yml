@@ -7,8 +7,10 @@ website:
     left:
       - href: index.qmd
         text: About
-      - resume.qmd
-
+      - href: resume.qmd
+        text: Resume
+      - href: blog.qmd
+        text: My Projects
 format:
   html:
     theme:

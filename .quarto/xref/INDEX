@@ -1,8 +1,17 @@
 {
-  "index.qmd": {
-    "index.html": "ba0ded67"
+  "resume.qmd": {
+    "resume.html": "08e8238a"
   },
-  "about.qmd": {
-    "about.html": "3f7404fc"
+  "index.qmd": {
+    "index.html": "a70cdf5c"
+  },
+  "blog/hw2/hw2.qmd": {
+    "hw2.html": "17edd2d7"
+  },
+  "blog/hw1/karlan-list-matching-donations.qmd": {
+    "karlan-list-matching-donations.html": "4e207b74"
+  },
+  "blog.qmd": {
+    "blog.html": "8b6c834f"
   }
 }

@@ -6,10 +6,12 @@ about:
   links: 
     - icon: envelope
       href: mailto:trach@ucsd.edu
+    - icon: linkedin
+      href: https://www.linkedin.com/in/tanisha-rach-/
 ---
 
 ---
 
-This is a Quarto website.
+Here's a photograph about me! 
 
-To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
+
