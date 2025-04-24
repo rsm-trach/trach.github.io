@@ -21,7 +21,7 @@ This project seeks to replicate their results.
 ## Data
 ```{python}
 import pandas as pd
-import statsmodels as sd
+import statsmodels.api as sm
 import matplotlib.pyplot as plt
 from statsmodels.tools import add_constant
 import statsmodels.formula.api as smf
@@ -194,13 +194,13 @@ The t-test and regression results show that the treatment group was significantl
 This result is statistically significant at the 1% level (p = 0.001), indicating strong evidence that the mention of a matching gift increases the likelihood of charitable giving. These findings align with the main result from Karlan and List (2007), Table 2A Panel A.
 
 ```{python}
+import statsmodels.api as sm 
 
-X = df_donation["treatment"]
-X = add_constant(X)
+X = sm.add_constant(df_donation["treatment"])
 y = df_donation["gave"]
 
-#probit_model = sm.probit(y, X).fit()
-#print(probit_model.summary())
+probit_model = sm.Probit(y, X).fit()
+print(probit_model.summary())
 ```
 
 The probit regression confirms the earlier results. The treatment group was significantly more likely to donate, with a marginal effect estimate of approximately 0.087 (p = 0.002). This result is consistent with the linear model, but the probit specification accounts for the binary nature of the outcome and better matches Table 3, Column 1 in the Karlan and List (2007) paper.
