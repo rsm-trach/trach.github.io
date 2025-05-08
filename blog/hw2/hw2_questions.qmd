@@ -1,0 +1,217 @@
+---
+title: "Poisson Regression Examples"
+author: "Tanisha Rach"
+date: 2025-05-07
+callout-appearance: minimal # this hides the blue "i" icon on .callout-notes
+---
+
+
+## Blueprinty Case Study
+
+### Introduction
+
+Blueprinty is a small firm that makes software for developing blueprints specifically for submitting patent applications to the US patent office. Their marketing team would like to make the claim that patent applicants using Blueprinty's software are more successful in getting their patent applications approved. Ideal data to study such an effect might include the success rate of patent applications before using Blueprinty's software and after using it. Unfortunately, such data is not available. 
+
+However, Blueprinty has collected data on 1,500 mature (non-startup) engineering firms. The data include each firm's number of patents awarded over the last 5 years, regional location, age since incorporation, and whether or not the firm uses Blueprinty's software. The marketing team would like to use this data to make the claim that firms using Blueprinty's software are more successful in getting their patent applications approved.
+
+
+### Data
+```{python}
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.optimize import minimize_scalar
+import seaborn as sns
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+from scipy.special import gammaln
+from scipy.optimize import minimize
+
+df = pd.read_csv("blueprinty.csv")
+df.shape, df.head()
+sns.histplot(data=df, x="patents", hue="iscustomer", multiple="dodge", bins=30)
+plt.title("Number of Patents by Customer Status")
+plt.xlabel("Number of Patents")
+plt.ylabel("Count")
+plt.legend(title="Customer")
+plt.show()
+df.groupby("iscustomer")["patents"].mean()
+```
+
+Blueprinty customers are not selected at random. It may be important to account for systematic differences in the age and regional location of customers vs non-customers.
+
+```{python}
+sns.countplot(data=df, x="region", hue="iscustomer")
+plt.title("Region Distribution by Customer Status")
+plt.xlabel("Region")
+plt.ylabel("Count")
+plt.xticks(rotation=45)
+plt.legend(title="Customer")
+plt.show()
+sns.boxplot(data=df, x="iscustomer", y="age")
+plt.title("Firm Age by Customer Status")
+plt.xlabel("Customer Status (0 = Non-customer, 1 = Customer)")
+plt.ylabel("Age")
+plt.show()
+
+df.groupby("iscustomer")["age"].mean()
+
+```
+
+Blueprinty customers are mostly from the Northeast, while non-customers are more spread out across different regions. The average age of firms is pretty similar for both groups, but customers might be just a little younger overall.
+
+
+
+
+### Estimation of Simple Poisson Model
+
+Since our outcome variable of interest can only be small integer values per a set unit of time, we can use a Poisson density to model the number of patents awarded to each engineering firm over the last 5 years. We start by estimating a simple Poisson model via Maximum Likelihood.
+```{python}
+def poisson_loglikelihood(lmbda, Y):
+    loglik = np.sum(Y * np.log(lmbda) - lmbda - np.log(np.math.factorial(Y)))
+    return loglik
+def poisson_loglikelihood(lmbda, Y):
+    return np.sum(Y * np.log(lmbda) - lmbda - gammaln(Y + 1))
+Y = df["patents"].values
+lmbdas = np.linspace(0.1, 10, 200)
+loglik_vals = [poisson_loglikelihood(lmbda, Y) for lmbda in lmbdas]
+
+plt.plot(lmbdas, loglik_vals)
+plt.xlabel("Lambda (λ)")
+plt.ylabel("Log-Likelihood")
+plt.title("Log-Likelihood of Poisson Model across Lambda Values")
+plt.grid(True)
+plt.show()
+
+neg_loglik = lambda lmbda: -poisson_loglikelihood(lmbda, Y)
+result = minimize_scalar(neg_loglik, bounds=(0.1, 10), method='bounded')
+
+lambda_mle = result.x
+lambda_mle
+
+```
+
+### Estimation of Poisson Regression Model
+```{python}
+def poisson_regression_loglik(beta, Y, X):
+    beta = np.array(beta, dtype=np.float64)    
+    X = np.array(X, dtype=np.float64)           
+    Y = np.array(Y, dtype=np.float64)          
+    lambda_i = np.exp(np.dot(X, beta))      
+    return np.sum(Y * np.log(lambda_i) - lambda_i - gammaln(Y + 1))
+
+df["age2"] = df["age"] ** 2
+
+region_dummies = pd.get_dummies(df["region"], prefix="region", drop_first=True)
+
+X = pd.concat([
+    pd.Series(1, index=df.index, name="const"),  
+    df[["age", "age2", "iscustomer"]],
+    region_dummies
+], axis=1)
+
+Y = df["patents"].values
+X = X.values  
+
+def neg_loglik(beta, Y, X):
+    return -poisson_regression_loglik(beta, Y, X)
+
+beta_init = np.zeros(X.shape[1])
+
+X = np.array(X, dtype=np.float64)
+Y = np.array(Y, dtype=np.float64)
+result = minimize(neg_loglik, beta_init, args=(Y, X), method='BFGS')
+
+beta_hat = result.x
+
+X0 = X.copy()
+X1 = X.copy()
+X0[:, 3] = 0
+X1[:, 3] = 1
+X0 = np.array(X0, dtype=np.float64)
+X1 = np.array(X1, dtype=np.float64)
+beta_hat = np.array(beta_hat, dtype=np.float64)
+lambda_0 = np.exp(np.dot(X0, beta_hat))
+lambda_1 = np.exp(np.dot(X1, beta_hat))
+
+avg_diff = np.mean(lambda_1 - lambda_0)
+print("Average treatment effect of being a Blueprinty customer:", avg_diff)
+
+
+```
+
+Interpretation of Blueprinty’s Effect:
+The average treatment effect of using Blueprinty's software is approximately 1.48 additional patents per firm.
+This means that, holding all other variables constant (age, age squared, and region), firms that are Blueprinty customers are expected to receive 1.48 more patents on average compared to otherwise identical non-customer firms.
+
+Effect of Blueprinty's Software on Patent Success:
+To estimate the causal effect of Blueprinty’s software, we used a Poisson regression model to simulate counterfactual outcomes. We predicted the number of patents each firm would be awarded under two scenarios: (1) if the firm were not a customer (iscustomer = 0), and (2) if the same firm were a customer (iscustomer = 1).
+
+The average difference between the two predictions was 1.48, indicating that being a Blueprinty customer is associated with 1.48 additional patents per firm, holding age, region, and all other variables constant. This result suggests a meaningful and positive effect of Blueprinty’s software on patent success.
+
+
+## AirBnB Case Study
+
+### Introduction
+
+AirBnB is a popular platform for booking short-term rentals. In March 2017, students Annika Awad, Evan Lebo, and Anna Linden scraped of 40,000 Airbnb listings from New York City.  The data include the following variables:
+
+:::: {.callout-note collapse="true"}
+### Variable Definitions
+
+    - `id` = unique ID number for each unit
+    - `last_scraped` = date when information scraped
+    - `host_since` = date when host first listed the unit on Airbnb
+    - `days` = `last_scraped` - `host_since` = number of days the unit has been listed
+    - `room_type` = Entire home/apt., Private room, or Shared room
+    - `bathrooms` = number of bathrooms
+    - `bedrooms` = number of bedrooms
+    - `price` = price per night (dollars)
+    - `number_of_reviews` = number of reviews for the unit on Airbnb
+    - `review_scores_cleanliness` = a cleanliness score from reviews (1-10)
+    - `review_scores_location` = a "quality of location" score from reviews (1-10)
+    - `review_scores_value` = a "quality of value" score from reviews (1-10)
+    - `instant_bookable` = "t" if instantly bookable, "f" if not
+
+::::
+
+
+_todo: Assume the number of reviews is a good proxy for the number of bookings. Perform some exploratory data analysis to get a feel for the data, handle or drop observations with missing values on relevant variables, build one or more models (e.g., a poisson regression model for the number of bookings as proxied by the number of reviews), and interpret model coefficients to describe variation in the number of reviews as a function of the variables provided._
+
+```{python}
+df2 = pd.read_csv('/Users/tanisharach/Desktop/trach_website/blog/hw2/airbnb.csv')
+print(df2.head())
+relevant_cols = [
+    'number_of_reviews', 'bathrooms', 'bedrooms', 'price',
+    'review_scores_cleanliness', 'review_scores_location', 
+    'review_scores_value', 'instant_bookable', 'room_type'
+]
+df_clean = df2[relevant_cols].dropna()
+
+df_clean['instant_bookable'] = df_clean['instant_bookable'].astype('category')
+df_clean['room_type'] = df_clean['room_type'].astype('category')
+
+plt.figure(figsize=(8, 5))
+sns.histplot(df_clean['number_of_reviews'], bins=50, kde=False)
+plt.title('Distribution of Number of Reviews')
+plt.xlabel('Number of Reviews')
+plt.ylabel('Count')
+plt.xlim(0, 200)
+plt.show()
+
+formula = """number_of_reviews ~ price + bedrooms + bathrooms + 
+             review_scores_cleanliness + review_scores_location + 
+             review_scores_value + C(instant_bookable) + C(room_type)"""
+
+poisson_model=smf.glm(formula=formula, data=df_clean, 
+                        family=sm.families.Poisson()).fit()
+
+print(poisson_model.summary())
+
+```
+
+Interpretation: 
+Listings that are **instantly bookable** receive approximately **40% more reviews**, suggesting higher demand. **Private rooms** get about **19% fewer reviews**, and **shared rooms** about **92% fewer**, compared to entire homes. Each additional **bedroom** increases expected reviews by **7.8%**, while oddly, more **bathrooms** reduce them by **11.6%**. **Higher cleanliness scores** strongly boost reviews (+12% per point), but higher **location** and **value scores** surprisingly reduce them slightly, possibly due to confounding factors. **Price** has a small negative effect: every \$100 increase leads to a **\~1.4% drop** in expected reviews.
+
+
+

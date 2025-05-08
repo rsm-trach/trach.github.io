@@ -13,5 +13,8 @@
   },
   "blog.qmd": {
     "blog.html": "8b6c834f"
+  },
+  "blog/hw2/hw2_questions.qmd": {
+    "hw2_questions.html": "33b59618"
   }
 }
