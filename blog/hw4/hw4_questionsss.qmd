@@ -1,0 +1,353 @@
+---
+title: "Machine Learning"
+author: "Tanisha Rach"
+date: today
+---
+
+## Project Overview
+This project investigates essential methods in marketing analytics by utilizing both real-world and simulated datasets. The primary datasets employed in this study include:
+### Palmer Penguins Dataset
+The Palmer Penguins dataset features measurements from three penguin species—Adelie, Chinstrap, and Gentoo—gathered from islands in the Palmer Archipelago, Antarctica. It includes key attributes such as bill length, bill depth, flipper length, body mass, and species type. Frequently used as a substitute for the Iris dataset, it serves as a popular resource for illustrating clustering and classification techniques.
+**the project:**  
+We utilize the Palmer Penguins dataset to manually implement and visualize the k-means clustering algorithm, benchmark it against built-in library implementations, and assess clustering performance using evaluation metrics such as the within-cluster sum of squares and scores.
+### Driver Analyse Dataset
+We utilize the Palmer Penguins dataset to manually implement and visualize the k-means clustering algorithm, benchmark it against built-in library implementations, and assess clustering performance using evaluation metrics such as the within-cluster sum of squares and silhouette scores.
+**In this project:**  
+We use a diverse set of statistical and machine learning techniques to evaluate how each predictor contributes to explaining customer satisfaction. These techniques include correlation analysis, regression-based coefficients, Shapley values, Johnson’s relative weights, and feature importance measures derived from models such as random forest, XGBoost, and neural networks.
+
+### Project Tasks
+- Clustering (K-Means): Develop a custom implementation of the k-means algorithm, illustrate its iterative steps through visualizations, compare its performance with the scikit-learn version, and identify the optimal number of clusters using evaluation techniques.
+- Key Drivers Analysis: Assess the impact of various predictors on customer satisfaction by applying a range of statistical and machine learning methods, and present the relative importance of these predictors in a consolidated comparison table.
+
+## 1. K-Means
+
+
+```{python}
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import pandas as pd
+    df= pd.read_csv('/Users/tanisharach/trach_website/trach.github.io/blog/hw4/palmer_penguins.csv')
+    data= df[['bill_length_mm', 'flipper_length_mm']].dropna().values
+    def initialize_centroids(X, k):
+        idx = np.random.choice(len(X), k, replace=False)
+        return X[idx]
+    def assign_clusters(X, centroids):
+        dists = np.linalg.norm(X[:, np.newaxis] - centroids, axis=2)
+        return np.argmin(dists, axis=1)
+    def update_centroids(X, labels, k):
+        return np.array([X[labels == i].mean(axis=0) for i in range(k)])
+    def kmeans(X, k, max_iters=10, plot_steps=True):
+        centroids = initialize_centroids(X, k)
+        for it in range(max_iters):
+            labels = assign_clusters(X, centroids)
+            new_centroids = update_centroids(X, labels, k)
+            if plot_steps:
+                plt.figure(figsize=(6,4))
+                for i in range(k):
+                    plt.scatter(X[labels==i,0], X[labels==i,1], label=f'Cluster {i+1}')
+                plt.scatter(centroids[:,0], centroids[:,1], c='black', marker='x', s=100, label='Centroids')
+                plt.title(f'Iteration {it+1}')
+                plt.xlabel('Bill Length (mm)')
+                plt.ylabel('Flipper Length (mm)')
+                plt.legend()
+                plt.show()
+            if np.allclose(centroids, new_centroids):
+                break
+            centroids = new_centroids
+        return labels, centroids
+    np.random.seed(42)
+    k = 3
+    labels, centroids = kmeans(data, k, max_iters=10, plot_steps=True)
+    from sklearn.cluster import KMeans
+    kmeans_builtin = KMeans(n_clusters=k, random_state=42)
+    labels_builtin = kmeans_builtin.fit_predict(data)
+    plt.figure(figsize=(12,5))
+    plt.subplot(1,2,1)
+    for i in range(k):
+        plt.scatter(data[labels==i,0], data[labels==i,1], label=f'Cluster {i+1}')
+    plt.scatter(centroids[:,0], centroids[:,1], c='black', marker='x', s=100, label='Centroids')
+    plt.title('Custom K-Means')
+    plt.xlabel('Bill Length (mm)')
+    plt.ylabel('Flipper Length (mm)')
+    plt.legend()
+    plt.subplot(1,2,2)
+    for i in range(k):
+        plt.scatter(data[labels_builtin==i,0], data[labels_builtin==i,1], label=f'Cluster {i+1}')
+    plt.scatter(kmeans_builtin.cluster_centers_[:,0], kmeans_builtin.cluster_centers_[:,1], c='black', marker='x', s=100, label='Centroids')
+    plt.title('scikit-learn KMeans')
+    plt.xlabel('Bill Length (mm)')
+    plt.ylabel('Flipper Length (mm)')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+```
+
+
+## Manual K-Means Algorithm and Performance Benchmark
+We developed a Python-based implementation of the k-means clustering algorithm without relying on existing libraries, enabling detailed visualization of how clusters and centroids evolve through each iteration. This was applied to the Palmer Penguins dataset, specifically using bill_length_mm and flipper_length_mm as input features. For benchmarking, we also employed scikit-learn’s built-in KMeans algorithm.
+
+- Iterative Visualizations: During each update step, we plotted the data points colored by their assigned cluster and overlaid the current centroid positions. These visualizations provided clear insights into the algorithm's convergence behavior.
+
+- Evaluation: Once clustering was complete, we compared our implementation’s final results—both centroids and cluster labels—with those from scikit-learn. The alignment of results validated the accuracy of our custom version.
+
+- Process Animation: To enhance interpretability, we created an animated GIF that depicts how the algorithm iteratively forms and refines clusters over time.
+
+```{python}
+import matplotlib.pyplot as plt
+from sklearn.metrics import silhouette_score
+from sklearn.cluster import KMeans
+import pandas as pd
+df= df= pd.read_csv('/Users/tanisharach/trach_website/trach.github.io/blog/hw4/palmer_penguins.csv')
+data= df[['bill_length_mm', 'flipper_length_mm']].dropna().values
+wcss = []
+sil_scores = []
+K_range = range(2, 8)
+fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+...
+
+from sklearn.metrics import silhouette_score
+wcss = []
+sil_scores = []
+K_range = range(2, 8)
+fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+axes = axes.flatten()
+for idx, k in enumerate(K_range):
+    kmeans_model = KMeans(n_clusters=k, random_state=42)
+    labels = kmeans_model.fit_predict(data)
+    wcss.append(kmeans_model.inertia_)
+    sil = silhouette_score(data, labels)
+    sil_scores.append(sil)
+    ax = axes[idx]
+    for i in range(k):
+        ax.scatter(data[labels==i,0], data[labels==i,1], label=f'Cluster {i+1}')
+    ax.scatter(kmeans_model.cluster_centers_[:,0], kmeans_model.cluster_centers_[:,1], c='black', marker='x', s=100, label='Centroids')
+    ax.set_title(f'K={k}')
+    ax.set_xlabel('Bill Length (mm)')
+    ax.set_ylabel('Flipper Length (mm)')
+    ax.legend()
+plt.tight_layout()
+plt.show()
+plt.figure(figsize=(12,5))
+plt.subplot(1,2,1)
+plt.plot(K_range, wcss, marker='o')
+plt.title('Within-Cluster Sum of Squares (WCSS)')
+plt.xlabel('Number of clusters (K)')
+plt.ylabel('WCSS')
+plt.subplot(1,2,2)
+plt.plot(K_range, sil_scores, marker='o')
+plt.title('Silhouette Score')
+plt.xlabel('Number of clusters (K)')
+plt.ylabel('Silhouette Score')
+plt.tight_layout()
+plt.show()
+best_k_wcss = K_range[wcss.index(min(wcss))]
+best_k_sil = K_range[sil_scores.index(max(sil_scores))]
+print(f"Lowest WCSS at K={best_k_wcss}, highest silhouette score at K={best_k_sil}")
+```
+
+
+# Optimal Number of Clusters:
+To identify the most suitable number of clusters (K), we analyzed two key evaluation metrics across a range of K values: Within-Cluster Sum of Squares (WCSS) and the Silhouette Score.
+
+# Within-Cluster Sum of Squares (WCSS):
+This metric quantifies the sum of squared distances between each point and the centroid of its assigned cluster. While WCSS naturally decreases as K increases, the rate of improvement diminishes. Using the "elbow method," we look for a point where the decrease in WCSS starts to level off. In this case, the elbow is observed at K=3, suggesting that additional clusters beyond this point contribute minimal gain in cohesion.
+
+# Silhouette Score:
+The silhouette score evaluates how well each point fits within its assigned cluster compared to others, with higher scores indicating better-defined clusters. Our analysis shows that the silhouette score is highest at K=2, implying that the clearest cluster separation is achieved when the data is grouped into two clusters.
+
+# Final Insight:
+
+The WCSS plot favors K=3 as a good trade-off between simplicity and cluster compactness.
+
+The silhouette score identifies K=2 as the best choice for maximizing separation between clusters.
+
+Ultimately, the ideal number of clusters depends on your priorities—either clearer group distinctions (K=2) or a more balanced cluster structure (K=3). The context and interpretability of your results should guide the final selection.
+
+# Visualization Enhancement:
+To deepen our understanding of how k-means clustering evolves, we generated an animated GIF that illustrates the step-by-step updates of cluster assignments and centroid movements. This dynamic visualization provides an intuitive view of the algorithm’s convergence process.
+```{python}
+import imageio
+import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.metrics import silhouette_score
+from sklearn.cluster import KMeans
+import pandas as pd
+df= df= pd.read_csv('/Users/tanisharach/trach_website/trach.github.io/blog/hw4/palmer_penguins.csv')
+data= df[['bill_length_mm', 'flipper_length_mm']].dropna().values
+def initialize_centroids(X, k):
+        idx = np.random.choice(len(X), k, replace=False)
+        return X[idx]
+def assign_clusters(X, centroids):
+        dists = np.linalg.norm(X[:, np.newaxis] - centroids, axis=2)
+        return np.argmin(dists, axis=1)
+def update_centroids(X, labels, k):
+        return np.array([X[labels == i].mean(axis=0) for i in range(k)])
+def kmeans(X, k, max_iters=10, plot_steps=True):
+        centroids = initialize_centroids(X, k)
+def kmeans_gif(X, k, max_iters=10, gif_path='kmeans_animation.gif'):
+    centroids = initialize_centroids(X, k)
+    images = []
+    for it in range(max_iters):
+        labels = assign_clusters(X, centroids)
+        new_centroids = update_centroids(X, labels, k)
+        fig, ax = plt.subplots(figsize=(6,4))
+        colors = ['red', 'gold', 'magenta', 'blue', 'green', 'cyan', 'orange']
+        for i in range(k):
+            ax.scatter(X[labels==i,0], X[labels==i,1], color=colors[i%len(colors)], s=10)
+            ax.scatter(centroids[i,0], centroids[i,1], color=colors[i%len(colors)], edgecolor='black', s=100, marker='o', linewidth=2)
+        ax.set_title(f'Iteration {it+1}')
+        ax.set_xlabel('Bill Length (mm)')
+        ax.set_ylabel('Flipper Length (mm)')
+        ax.set_xlim(X[:,0].min()-1, X[:,0].max()+1)
+        ax.set_ylim(X[:,1].min()-5, X[:,1].max()+5)
+        fname = f'_kmeans_step_{it}.png'
+        fig.savefig(fname)
+        plt.close(fig)
+        images.append(imageio.imread(fname))
+        os.remove(fname)
+        if np.allclose(centroids, new_centroids):
+            break
+        centroids = new_centroids
+    imageio.mimsave(gif_path, images, duration=0.8)
+    print(f"Animated GIF saved to {gif_path}")
+
+# Run and save GIF
+np.random.seed(42)
+kmeans_gif(data, k=3, max_iters=10, gif_path='kmeans_animation.gif')
+```
+
+![](kmeans_animation.gif)
+
+
+# 2. Key Drivers Analysis
+Approach and Findings
+In this part of the analysis, we constructed a key drivers table using the drivers analysis dataset to identify which variables most significantly influence customer satisfaction. Multiple analytical techniques were used to evaluate variable importance:
+
+# Pearson Correlation: Assesses the strength and direction of the linear relationship between each individual predictor and the satisfaction score.
+
+# Polychoric Correlation (estimated via Spearman): Captures monotonic relationships, particularly helpful for ordinal or non-linear connections between variables.
+
+# Standardized Regression Coefficients: Derived from linear regression with standardized inputs, these coefficients reveal the relative impact of each predictor.
+
+# Usefulness Metric: Represents the unique R² gain from adding a variable last into the regression model, highlighting its standalone explanatory power.
+
+# LMG / Shapley Value Decomposition: Allocates portions of the model’s total R² to each predictor by fairly distributing shared explanatory power.
+
+# Johnson’s Epsilon (Relative Weights): An estimation of predictor relevance using feature importances from a random forest model.
+
+# Random Forest Gini Importance: Captures how much each variable reduces impurity in a random forest, serving as an indicator of its influence.
+
+The comparative results for all these methods are summarized in the following table.
+
+
+```{python}
+import pandas as pd
+import numpy as np
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import r2_score
+from scipy.stats import pearsonr
+import shap
+df = pd.read_csv('/Users/tanisharach/trach_website/trach.github.io/blog/hw4/data_for_drivers_analysis.csv')
+exclude_cols = ['brand', 'id']
+predictors = [col for col in df.columns if col not in exclude_cols + ['satisfaction']]
+X = df[predictors]
+y = df['satisfaction']
+scaler = StandardScaler()
+X_std = scaler.fit_transform(X)
+X_std_df = pd.DataFrame(X_std, columns=predictors)
+
+pearson_corrs = [pearsonr(X[col], y)[0] for col in predictors]
+
+spearman_corrs = [X[col].corr(y, method='spearman') for col in predictors]
+
+lr = LinearRegression()
+lr.fit(X_std, y)
+std_coefs = lr.coef_
+
+def usefulness(X, y):
+    usefulness_scores = []
+    for col in X.columns:
+        X_other = X.drop(col, axis=1)
+        lr.fit(X_other, y)
+        r2_without = r2_score(y, lr.predict(X_other))
+        lr.fit(X, y)
+        r2_with = r2_score(y, lr.predict(X))
+        usefulness_scores.append(r2_with - r2_without)
+    return usefulness_scores
+
+usefulness_scores = usefulness(X_std_df, y)
+
+explainer = shap.Explainer(lr, X_std)
+shap_values = explainer(X_std)
+shap_means = np.abs(shap_values.values).mean(axis=0)
+
+
+def johnson_relative_weights(X, y):
+    rf = RandomForestRegressor(n_estimators=100, random_state=42)
+    rf.fit(X, y)
+    return rf.feature_importances_
+
+johnson_weights = johnson_relative_weights(X_std, y)
+
+rf = RandomForestRegressor(n_estimators=100, random_state=42)
+rf.fit(X, y)
+gini_importances = rf.feature_importances_
+
+results = pd.DataFrame({
+    'Perception': predictors,
+    'Pearson Correlations': np.round(pearson_corrs, 3),
+    'Polychoric Correlations': np.round(spearman_corrs, 3),
+    'Standardized Regression Coefficients': np.round(std_coefs, 3),
+    'Usefulness': np.round(usefulness_scores, 3),
+    'LMG / Shapley Values': np.round(shap_means / shap_means.sum(), 3),
+    "Johnson's Epsilon": np.round(johnson_weights / johnson_weights.sum(), 3),
+    'Mean Decrease in RF Gini Coefficient': np.round(gini_importances / gini_importances.sum(), 3)
+})
+
+results
+
+```
+
+
+**Supplementary Metrics:**
+To broaden our analysis, we incorporated feature importance scores from XGBoost as well as permutation importance derived from a neural network (MLP). These advanced machine learning techniques offer additional insights into the significance of each predictor variable.
+
+
+```{python}
+from xgboost import XGBRegressor
+from sklearn.neural_network import MLPRegressor
+xgb = XGBRegressor(n_estimators=100, random_state=42)
+xgb.fit(X, y)
+xgb_importances = xgb.feature_importances_
+xgb_importances_norm = xgb_importances / xgb_importances.sum()
+from sklearn.inspection import permutation_importance
+mlp = MLPRegressor(hidden_layer_sizes=(32, 16), max_iter=1000, random_state=42)
+mlp.fit(X_std, y)
+perm_importance = permutation_importance(mlp, X_std, y, n_repeats=10, random_state=42)
+nn_importances = perm_importance.importances_mean
+nn_importances_norm = nn_importances / nn_importances.sum()
+results['XGBoost Importance'] = np.round(xgb_importances_norm, 3)
+results['Neural Net Permutation Importance'] = np.round(nn_importances_norm, 3)
+
+results
+```
+
+## Project Overview and Final Insights
+
+This project explored essential techniques in marketing analytics through the use of both real-world and synthetic datasets. We developed a custom k-means clustering algorithm and benchmarked it against scikit-learn’s built-in version, visualizing each step of the clustering process. Cluster evaluation metrics—WCSS and silhouette scores—were used to assess performance and revealed how different criteria can lead to different choices for the optimal number of clusters.
+
+In the key drivers analysis, we employed a wide range of statistical and machine learning tools to evaluate which variables most influence customer satisfaction. These included correlation measures, standardized regression coefficients, Shapley values, Johnson’s relative weights, and feature importance scores from models like random forest, XGBoost, and neural networks. All results were compiled into a summary table, offering a multi-angle perspective on variable importance.
+
+**Key Takeaways:**
+
+* The custom and scikit-learn k-means models yielded comparable clustering outcomes, reinforcing our grasp of the algorithm's mechanics.
+* Selecting the right number of clusters requires balancing different evaluation metrics and considering the specific business context.
+* The key drivers analysis demonstrated consistent predictor rankings across methods, underscoring the importance of using diverse techniques for a well-rounded understanding of customer satisfaction drivers.
+
+
+
+
